@@ -1,0 +1,70 @@
+name: Wisecow Full CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_push_ssh_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:latest
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.8.3
+      with:
+        ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+    - name: SSH and deploy on EC2
+      uses: appleboy/ssh-action@v0.2.15
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        script: |
+          # Ensure kubectl is installed on EC2 and configured       
+          echo "Starting Wisecow deployment on EC2 Kubernetes cluster"
+
+          # Apply cert-manager CRDs if not already present
+          kubectl apply --validate=false -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml
+
+          # Install cert-manager via Helm if not installed
+          if ! kubectl get namespace cert-manager; then
+            kubectl create namespace cert-manager
+            helm repo add jetstack https://charts.jetstack.io
+            helm repo update
+            helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager --set installCRDs=true
+            kubectl rollout status deployment/cert-manager -n cert-manager
+          fi
+
+          # Apply ClusterIssuer for Let's Encrypt
+          kubectl apply -f cluster-issuer.yaml
+
+          # Deploy Wisecow app manifests
+          kubectl apply -f k8s/
+
+          # Restart deployment to pick up new image
+          kubectl rollout restart deployment wisecow
+
+          # Verify rollout status
+          kubectl rollout status deployment wisecow
+
+          echo "Wisecow deployment complete. Access via https://yourdomain.com"
