@@ -35,17 +35,26 @@ jobs:
           ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:latest
           ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:${{ github.sha }}
 
-    # 5️⃣ SSH into EC2 and deploy to Kind cluster
+    # 5️⃣ Copy manifests to EC2
+    - name: Copy Kubernetes manifests to EC2
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_SSH_KEY }}
+        source: "k8s/*"
+        target: "/home/ubuntu/deploy/k8s"
+
+    # 6️⃣ SSH into EC2 and deploy to Kind cluster
     - name: SSH and deploy on EC2 (Kind)
       uses: appleboy/ssh-action@v0.1.10
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ubuntu
-        key: ${{ secrets.EC2_SSH_KEY }}   # ✅ Private key directly injected
+        key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           echo "🚀 Starting Wisecow deployment inside Kind cluster"
 
-          # Ensure Kind and kubectl are configured
           export KUBECONFIG=/home/ubuntu/.kube/config
           kubectl cluster-info || { echo "❌ Kind cluster not found"; exit 1; }
 
@@ -58,6 +67,11 @@ jobs:
           echo "🧩 Ensuring cert-manager CRDs"
           kubectl apply --validate=false -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml
 
+          echo "🔍 Installing Helm (if missing)"
+          if ! command -v helm &> /dev/null; then
+            curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          fi
+
           echo "🔍 Installing cert-manager if missing"
           if ! kubectl get namespace cert-manager >/dev/null 2>&1; then
             kubectl create namespace cert-manager
@@ -69,9 +83,9 @@ jobs:
             kubectl rollout status deployment/cert-manager -n cert-manager
           fi
 
-          echo "⚙️ Applying ClusterIssuer and manifests"
-          kubectl apply -f k8s/cluster-issuer.yaml
-          kubectl apply -f k8s/
+          echo "⚙️ Applying ClusterIssuer and app manifests"
+          kubectl apply -f /home/ubuntu/deploy/k8s/cluster-issuer.yaml
+          kubectl apply -f /home/ubuntu/deploy/k8s/
 
           echo "🔄 Restarting Wisecow deployment"
           kubectl rollout restart deployment wisecow -n default
