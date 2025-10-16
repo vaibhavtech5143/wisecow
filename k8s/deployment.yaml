@@ -20,15 +20,4 @@ spec:
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 4499
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 4499
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 4499
-          initialDelaySeconds: 10
-          periodSeconds: 15
+        # No HTTP probes
