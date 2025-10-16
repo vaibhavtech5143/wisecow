@@ -90,11 +90,11 @@ jobs:
           fi
 
           # --- Apply Wisecow manifests ---
-          # kubectl apply -f /home/ubuntu/deploy/k8s/cluster-issuer.yaml
-          # kubectl apply -f /home/ubuntu/deploy/k8s/deployment.yaml
-          # kubectl apply -f /home/ubuntu/deploy/k8s/service.yaml
-          # kubectl apply -f /home/ubuntu/deploy/k8s/ingress.yaml
-          kubectl apply -f /home/ubuntu/deploy/k8s/k8.yaml
+          kubectl apply -f /home/ubuntu/deploy/k8s/cluster-issuer.yaml
+          kubectl apply -f /home/ubuntu/deploy/k8s/deployment.yaml
+          kubectl apply -f /home/ubuntu/deploy/k8s/service.yaml
+          kubectl apply -f /home/ubuntu/deploy/k8s/ingress.yaml
+          # kubectl apply -f /home/ubuntu/deploy/k8s/k8.yaml
 
 
           # --- Restart Deployment ---
