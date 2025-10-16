@@ -9,7 +9,7 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - assignment.vaibhav2633.tech   # For production, point DNS to your EC2 public IP
+    - assignment.vaibhav2633.tech
     secretName: wisecow-tls
   rules:
   - host: assignment.vaibhav2633.tech
