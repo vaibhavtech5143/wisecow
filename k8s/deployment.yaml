@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wisecow
+  labels:
+    app: wisecow
 spec:
   replicas: 1
   selector:
@@ -15,5 +17,18 @@ spec:
       containers:
       - name: wisecow
         image: vaibhav2633/wisecow:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 4499
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 4499
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 4499
+          initialDelaySeconds: 10
+          periodSeconds: 15

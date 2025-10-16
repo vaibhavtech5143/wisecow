@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1️⃣ Checkout repository
+    # 1️⃣ Checkout code
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -60,21 +60,27 @@ jobs:
 
           echo "📦 Pulling latest Docker image"
           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:latest
-
-          echo "📤 Loading image into Kind cluster"
           kind load docker-image ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:latest --name kind
 
-          echo "🧩 Ensuring cert-manager CRDs"
-          kubectl apply --validate=false -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml
-
-          echo "🔍 Installing Helm (if missing)"
+          # --- Helm installation ---
           if ! command -v helm &> /dev/null; then
             curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
           fi
 
-          echo "🔍 Installing cert-manager if missing"
-          if ! kubectl get namespace cert-manager >/dev/null 2>&1; then
+          # --- Install Ingress-Nginx if missing ---
+          if ! kubectl get ns ingress-nginx >/dev/null 2>&1; then
+            kubectl create namespace ingress-nginx
+            helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+            helm repo update
+            helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+              --namespace ingress-nginx
+            kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx
+          fi
+
+          # --- Install cert-manager if missing ---
+          if ! kubectl get ns cert-manager >/dev/null 2>&1; then
             kubectl create namespace cert-manager
+            kubectl apply --validate=false -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml
             helm repo add jetstack https://charts.jetstack.io
             helm repo update
             helm upgrade --install cert-manager jetstack/cert-manager \
@@ -83,11 +89,13 @@ jobs:
             kubectl rollout status deployment/cert-manager -n cert-manager
           fi
 
-          echo "⚙️ Applying ClusterIssuer and app manifests"
+          # --- Apply Wisecow manifests ---
           kubectl apply -f /home/ubuntu/deploy/k8s/cluster-issuer.yaml
-          kubectl apply -f /home/ubuntu/deploy/k8s/
+          kubectl apply -f /home/ubuntu/deploy/k8s/wisecow-deployment.yaml
+          kubectl apply -f /home/ubuntu/deploy/k8s/wisecow-service.yaml
+          kubectl apply -f /home/ubuntu/deploy/k8s/wisecow-ingress.yaml
 
-          echo "🔄 Restarting Wisecow deployment"
+          # --- Restart Deployment ---
           kubectl rollout restart deployment wisecow -n default
           kubectl rollout status deployment wisecow -n default
 
