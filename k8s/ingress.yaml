@@ -4,13 +4,8 @@ metadata:
   name: wisecow-ingress
   namespace: default
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    kubernetes.io/ingress.class: nginx
 spec:
-  ingressClassName: nginx
-  tls:
-  - hosts:
-    - assignment.vaibhav2633.tech
-    secretName: wisecow-tls
   rules:
   - host: assignment.vaibhav2633.tech
     http:
