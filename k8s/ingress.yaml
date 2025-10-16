@@ -3,9 +3,12 @@ kind: Ingress
 metadata:
   name: wisecow-ingress
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
-  ingressClassName: nginx
+  tls:
+  - hosts:
+    - assignment.vaibhav2633.tech
+    secretName: wisecow-tls
   rules:
   - host: assignment.vaibhav2633.tech
     http:
@@ -16,8 +19,4 @@ spec:
           service:
             name: wisecow
             port:
-              number: 443
-  tls:
-  - hosts:
-    - assignment.vaibhav2633.tech
-    secretName: wisecow-tls
+              number: 4499
