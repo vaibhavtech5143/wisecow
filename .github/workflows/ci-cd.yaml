@@ -89,12 +89,36 @@ jobs:
             kubectl rollout status deployment/cert-manager -n cert-manager
           fi
 
+          # --- Install KubeArmor if missing ---
+          if ! kubectl get ns kubearmor >/dev/null 2>&1; then
+            echo "📦 Installing KubeArmor for zero-trust security"
+            helm repo add kubearmor https://kubearmor.github.io/charts
+            helm repo update kubearmor
+            helm upgrade --install kubearmor-operator kubearmor/kubearmor-operator \
+              -n kubearmor --create-namespace
+            
+            # Apply KubeArmor configuration
+            kubectl apply -f https://raw.githubusercontent.com/kubearmor/KubeArmor/main/pkg/KubeArmorOperator/config/samples/sample-config.yml
+            
+            # Wait for KubeArmor to be ready
+            echo "⏳ Waiting for KubeArmor to be ready..."
+            kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=kubearmor -n kubearmor --timeout=300s || echo "⚠️ KubeArmor installation may need more time"
+          fi
+
           # --- Apply Wisecow manifests ---
           kubectl apply -f /home/ubuntu/deploy/k8s/cluster-issuer.yaml
           kubectl apply -f /home/ubuntu/deploy/k8s/deployment.yaml
           kubectl apply -f /home/ubuntu/deploy/k8s/service.yaml
           kubectl apply -f /home/ubuntu/deploy/k8s/ingress.yaml
-          # kubectl apply -f /home/ubuntu/deploy/k8s/k8.yaml
+          kubectl apply -f /home/ubuntu/deploy/k8s/k8.yml
+
+          # --- Apply KubeArmor security policy ---
+          if kubectl get crd kubearmor-policies.security.kubearmor.com >/dev/null 2>&1; then
+            echo "🔒 Applying KubeArmor security policy"
+            kubectl apply -f /home/ubuntu/deploy/k8s/kubearmor-policy.yaml
+          else
+            echo "⚠️ KubeArmor CRDs not found, skipping security policy"
+          fi
 
 
           # --- Restart Deployment ---

@@ -1,0 +1,154 @@
+apiVersion: security.kubearmor.com/v1
+kind: KubeArmorPolicy
+metadata:
+  name: wisecow-zero-trust-policy
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: wisecow
+  
+  # Process execution restrictions
+  process:
+    matchPaths:
+    - path: /usr/bin/apt
+      action: Block
+    - path: /usr/bin/apt-get
+      action: Block
+    - path: /usr/bin/dpkg
+      action: Block
+    - path: /usr/bin/wget
+      action: Block
+    - path: /usr/bin/curl
+      action: Block
+    - path: /bin/sh
+      action: Block
+    - path: /bin/bash
+      action: Block
+      fromSource:
+      - path: /usr/src/app/wisecow.sh
+        action: Allow
+    - path: /usr/bin/nc
+      fromSource:
+      - path: /usr/src/app/wisecow.sh
+        action: Allow
+    - path: /usr/games/fortune
+      fromSource:
+      - path: /usr/src/app/wisecow.sh
+        action: Allow
+    - path: /usr/games/cowsay
+      fromSource:
+      - path: /usr/src/app/wisecow.sh
+        action: Allow
+    
+    matchDirectories:
+    - dir: /tmp/
+      recursive: true
+      action: Block
+    - dir: /var/tmp/
+      recursive: true
+      action: Block
+    - dir: /dev/shm/
+      recursive: true
+      action: Block
+  
+  # File access restrictions
+  file:
+    matchPaths:
+    # Block access to sensitive system files
+    - path: /etc/passwd
+      action: Block
+    - path: /etc/shadow
+      action: Block
+    - path: /etc/hosts
+      action: Block
+    - path: /etc/hostname
+      action: Block
+    - path: /proc/version
+      action: Block
+    - path: /proc/sys/
+      recursive: true
+      action: Block
+    
+    # Allow only necessary file operations
+    - path: /usr/src/app/
+      recursive: true
+      action: Allow
+    - path: /usr/games/
+      recursive: true
+      action: Allow
+      readOnly: true
+    - path: /usr/share/games/
+      recursive: true
+      action: Allow
+      readOnly: true
+    
+    matchDirectories:
+    # Block write access to system directories
+    - dir: /etc/
+      recursive: true
+      action: Block
+    - dir: /usr/bin/
+      recursive: true
+      action: Block
+    - dir: /usr/sbin/
+      recursive: true
+      action: Block
+    - dir: /bin/
+      recursive: true
+      action: Block
+    - dir: /sbin/
+      recursive: true
+      action: Block
+    - dir: /boot/
+      recursive: true
+      action: Block
+    - dir: /sys/
+      recursive: true
+      action: Block
+    
+    # Allow read-only access to required directories
+    - dir: /lib/
+      recursive: true
+      action: Allow
+      readOnly: true
+    - dir: /usr/lib/
+      recursive: true
+      action: Allow
+      readOnly: true
+  
+  # Network restrictions
+  network:
+    matchProtocols:
+    - protocol: tcp
+      action: Allow
+      fromSource:
+      - path: /usr/bin/nc
+    - protocol: udp
+      action: Block
+    - protocol: icmp
+      action: Block
+  
+  # Capabilities restrictions
+  capabilities:
+    matchCapabilities:
+    - capability: NET_ADMIN
+      action: Block
+    - capability: SYS_ADMIN
+      action: Block
+    - capability: SYS_PTRACE
+      action: Block
+    - capability: SYS_MODULE
+      action: Block
+    - capability: DAC_OVERRIDE
+      action: Block
+    - capability: SETUID
+      action: Block
+    - capability: SETGID
+      action: Block
+
+  # Action for policy violations
+  action: Block
+  
+  # Audit mode - set to true for monitoring without blocking
+  # audit: true
