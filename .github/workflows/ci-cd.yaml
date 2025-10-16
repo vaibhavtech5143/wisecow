@@ -43,7 +43,7 @@ jobs:
         username: ubuntu
         key: ${{ secrets.EC2_SSH_KEY }}
         source: "k8s/*"
-        target: "/home/ubuntu/deploy/k8s"
+        target: "/home/ubuntu/deploy/"
 
     # 6️⃣ SSH into EC2 and deploy to Kind cluster
     - name: SSH and deploy on EC2 (Kind)
