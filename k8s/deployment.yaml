@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: wisecow
-        image: ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:latest
+        image: vaibhav2633/wisecow:latest
         ports:
         - containerPort: 4499
